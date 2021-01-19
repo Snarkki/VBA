@@ -1,0 +1,36 @@
+// FnWorkingDays
+/*
+@Startdate type DATE
+@NumOfDays  type INT // negative counts back
+@HDays     type Table,
+*/
+
+let FnWorkingDays = (StartDate as date, NumOfDays as number, optional Holidays as table) as date =>
+
+let
+  // get Holidays from Table
+  ListOfHolidays = if Holidays = null then {} else Table.Column(Holidays,"Date"),
+  // Convert Dates into Numbers for Quicker Search
+  NumListOfHolidays = List.Transform(ListOfHolidays ,each Number.From(_)),
+  // Define the Direction of Count, Negativ: Backwards
+  AddDayDirection = if NumOfDays<0 then -1 else 1,
+  // make NumOfDays Absolute for Count
+  NumOfDaysAbs = Number.Abs(NumOfDays),
+  // generate a Datelist with to many dates
+  GenerateListDates = List.Dates( StartDate, NumOfDaysAbs*7, #duration(1*AddDayDirection,0,0,0)),
+  // Select all none Weendend dates
+  ListDatesNoWeekend = List.Select(GenerateListDates,(_)=>Date.DayOfWeek(_, Day.Monday) < 5),
+  // Select all none Holydaydates
+  ListDatesNoHoliday = List.Select(ListDatesNoWeekend,(_)=>List.PositionOf(NumListOfHolidays,Number.From(_))=-1),
+  // First check if the current date is weekend/holiday. If it is then select the first from list otherwise select +1 from list
+  DateList = List.Contains(ListDatesNoHoliday,StartDate),
+  ListDates = if (DateList = true) then
+  List.LastN(List.FirstN(ListDatesNoHoliday,NumOfDaysAbs+1),1)
+  else List.LastN(List.FirstN(ListDatesNoHoliday,NumOfDaysAbs),1),
+  // Output last Date
+  outputDate = ListDates{0},
+  errorcheck = try outputDate otherwise StartDate
+in
+  errorcheck
+in
+  FnWorkingDays
