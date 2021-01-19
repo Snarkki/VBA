@@ -1,0 +1,95 @@
+Option Explicit
+Public SapGuiAuto, Wscript, msgcol
+Public objGui  As GuiApplication
+Public objConn As GuiConnection
+Public objsess As GuiSession
+Public objSBar As GuiStatusbar
+
+
+Function Run_SAP_data(W_System As String, Process As String)
+
+
+Dim W_Ret As Boolean
+
+' Connect to SAP
+W_Ret = Attach_objSess
+If Not W_Ret Then
+    Exit Function
+End If
+
+Select Case Process
+Case "OnlyUpdate"
+    Call Update_Data(objsess, ws_name)
+End Select
+
+
+End Function
+
+Function Update_Data(objsess, ws_name As Worksheet)
+
+On Error GoTo myerr
+
+objsess.FindById("wnd[0]").maximize
+
+
+Next iRow
+objsess.FindById("wnd[0]/tbar[0]/btn[3]").press
+objsess.EndTransaction
+Exit Function
+
+myerr:
+   MsgBox "Error occured while retrieving data", vbCritical + vbOKOnly
+End Function
+
+
+
+Function Attach_objSess() As Boolean
+Dim il, it
+Dim W_conn, W_Sess
+
+If W_System = "" Then
+   Attach_objSess = False
+   Exit Function
+End If
+
+If Not objsess Is Nothing Then
+    If objsess.Info.SystemName & objsess.Info.Client = W_System Then
+        Attach_objSess = True
+        Exit Function
+    End If
+End If
+
+If objGui Is Nothing Then
+   Set SapGuiAuto = GetObject("SAPGUI")
+   Set objGui = SapGuiAuto.GetScriptingEngine
+End If
+
+For il = 0 To objGui.Children.Count - 1
+    Set W_conn = objGui.Children(il + 0)
+    For it = 0 To W_conn.Children.Count - 1
+        Set W_Sess = W_conn.Children(it + 0)
+        If W_Sess.Info.SystemName & W_Sess.Info.Client = W_System Then
+            Set objConn = objGui.Children(il + 0)
+            Set objsess = objConn.Children(it + 0)
+            Exit For
+        End If
+    Next
+Next
+
+If objsess Is Nothing Then
+   MsgBox "No active objSess to system " + W_System + ", or scripting is not enabled.", vbCritical + vbOKOnly
+   Attach_objSess = False
+   End
+End If
+
+If IsObject(Wscript) Then
+   Wscript.ConnectObject objsess, "on"
+   Wscript.ConnectObject objGui, "on"
+End If
+
+Set objSBar = objsess.FindById("wnd[0]/sbar")
+objsess.FindById("wnd[0]").maximize
+Attach_objSess = True
+
+
+End Function
